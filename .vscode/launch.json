@@ -1,0 +1,31 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "LlmProjectApplication",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "dk.ek.gruppe_i.llm_project.LlmProjectApplication",
+            "projectName": "recap-manager"
+        },
+        {
+            "type": "java",
+            "name": "Current File",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "${file}"
+        },
+        {
+            "type": "java",
+            "name": "LlmProjectApplication",
+            "request": "launch",
+            "mainClass": "dk.ek.gruppe_i.llm_project.LlmProjectApplication",
+            "projectName": "llm_project",
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

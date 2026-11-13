@@ -1,0 +1,11 @@
+C:\Users\Sjknu\source\repos\llm-exam-project\src\main\java\dk\ek\gruppe_i\llm_project\config\AiDeploymentProperties.java
+C:\Users\Sjknu\source\repos\llm-exam-project\src\main\java\dk\ek\gruppe_i\llm_project\config\CorsConfig.java
+C:\Users\Sjknu\source\repos\llm-exam-project\src\main\java\dk\ek\gruppe_i\llm_project\config\OpenApiConfig.java
+C:\Users\Sjknu\source\repos\llm-exam-project\src\main\java\dk\ek\gruppe_i\llm_project\controller\AiController.java
+C:\Users\Sjknu\source\repos\llm-exam-project\src\main\java\dk\ek\gruppe_i\llm_project\dto\AiRequestDTO.java
+C:\Users\Sjknu\source\repos\llm-exam-project\src\main\java\dk\ek\gruppe_i\llm_project\dto\AiResponseDTO.java
+C:\Users\Sjknu\source\repos\llm-exam-project\src\main\java\dk\ek\gruppe_i\llm_project\enums\AiRequestType.java
+C:\Users\Sjknu\source\repos\llm-exam-project\src\main\java\dk\ek\gruppe_i\llm_project\exception\AiServiceException.java
+C:\Users\Sjknu\source\repos\llm-exam-project\src\main\java\dk\ek\gruppe_i\llm_project\exception\ApiExceptionHandler.java
+C:\Users\Sjknu\source\repos\llm-exam-project\src\main\java\dk\ek\gruppe_i\llm_project\LlmProjectApplication.java
+C:\Users\Sjknu\source\repos\llm-exam-project\src\main\java\dk\ek\gruppe_i\llm_project\service\AiService.java
