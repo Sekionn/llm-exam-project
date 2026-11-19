@@ -18,7 +18,8 @@ with `Content-Type: application/json`:
 }
 ```
 
-Use `CHARACTER_RECAP` for a character recap or `PATH_SUMMARY` for a journey summary.
+Use `CHARACTER_RECAP` for a character recap, `PATH_SUMMARY` for a journey summary, or
+`HOUSING_CAPACITY` to estimate housing capacity (see below).
 `context` is required and must contain character details or journey history.
 `characterId` is optional caller metadata; if provided, it must be positive.
 No data is retrieved using the ID. No authentication token or API version header is required.
@@ -53,3 +54,28 @@ For Docker, first build the JAR with `./mvnw.cmd package`, then run
 `docker compose -f docker-compose-llm_project.yml --profile prod up --build`.
 The container uses `http://host.docker.internal:11434` for Ollama by default;
 set `AI_OLLAMA_BASE_URL` to use a different provider address.
+
+## Housing capacity (Smart City)
+
+`requestType: "HOUSING_CAPACITY"` estimates how many residents one housing record can hold.
+`context` is plain text with one `key: value` line per field (missing values are `unknown`); the fields are
+described in `src/main/resources/rag/housing-data-context.md`.
+
+```json
+{
+  "requestType": "HOUSING_CAPACITY",
+  "context": "housingType: apartment\nnumberOfLevels: 4\nnumberOfFlats: unknown\nheightMeters: unknown"
+}
+```
+
+The model's answer (in `response`) is a JSON object:
+`{"capacity": 8, "confidence": "low", "reasoning": "..."}`.
+
+**RAG:** the housing data description is split into sections, embedded with the local embedding model and
+the most similar sections are added to the prompt. Set `"useRag": false` in the request to switch retrieval
+off for one call and compare answers; the default is `app.ai.rag-enabled`.
+If retrieval fails, the request is still answered without background material (a warning is logged).
+
+**Models** (local only): `ollama pull qwen3:4b` and `ollama pull nomic-embed-text`.
+Settings: `AI_OLLAMA_CHAT_MODEL`, `AI_OLLAMA_EMBEDDING_MODEL`, `AI_RAG_ENABLED`, `AI_RAG_TOP_K`, `SERVER_PORT`
+(default port is now 8090, matching this README and docker-compose).

@@ -13,7 +13,7 @@ public class AiRequestDTO {
 
     @Schema(
         description = "The type of AI operation to perform",
-        allowableValues = {"CHARACTER_RECAP", "PATH_SUMMARY"},
+        allowableValues = {"CHARACTER_RECAP", "PATH_SUMMARY", "HOUSING_CAPACITY"},
         example = "CHARACTER_RECAP"
     )
     @NotNull(message = "requestType is required")
@@ -27,4 +27,8 @@ public class AiRequestDTO {
             example = "Arin is an elven ranger who crossed the forest and rescued a lost traveler.")
     @NotBlank(message = "context is required")
     private String context;
+
+    @Schema(description = "Only used by HOUSING_CAPACITY: true/false forces retrieval (RAG) on or off; "
+            + "omit to use the server default (app.ai.rag-enabled)", example = "true")
+    private Boolean useRag;
 }

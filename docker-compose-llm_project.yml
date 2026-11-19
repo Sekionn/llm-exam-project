@@ -6,6 +6,6 @@ services:
       - "8090:8090"
     environment:
       AI_OLLAMA_BASE_URL: ${AI_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      AI_OLLAMA_CHAT_MODEL: ${AI_OLLAMA_CHAT_MODEL:-glm-4.6:cloud}
+      AI_OLLAMA_CHAT_MODEL: ${AI_OLLAMA_CHAT_MODEL:-qwen3:4b}
       AI_OLLAMA_TEMPERATURE: ${AI_OLLAMA_TEMPERATURE:-0.3}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-default}
