@@ -79,3 +79,65 @@ If retrieval fails, the request is still answered without background material (a
 **Models** (local only): `ollama pull qwen3:4b` and `ollama pull nomic-embed-text`.
 Settings: `AI_OLLAMA_CHAT_MODEL`, `AI_OLLAMA_EMBEDDING_MODEL`, `AI_RAG_ENABLED`, `AI_RAG_TOP_K`, `SERVER_PORT`
 (default port is now 8090, matching this README and docker-compose).
+
+### Example: the effect of RAG on a housing capacity estimate
+
+The same request is sent twice. The only difference is the `useRag` flag.
+Model: `qwen3:4b` (local, via Ollama), embeddings: `nomic-embed-text`, temperature 0.3.
+
+**Request (with RAG)**
+
+```json
+{
+  "requestType": "HOUSING_CAPACITY",
+  "context": "housingType: apartment\nnumberOfLevels: 4\nnumberOfFlats: 20\nheightMeters: unknown",
+  "useRag": true
+}
+```
+
+**Response (with RAG)**
+
+```json
+{
+  "response": "{\"capacity\": 40, \"confidence\": \"high\", \"reasoning\": \"20 flats × 2 persons per flat = 40 residents.\"}"
+}
+```
+
+The log shows `Retrieved 3 background chunks for HOUSING_CAPACITY`. The estimate follows the rule from
+`src/main/resources/rag/housing-data-context.md` (2 persons per flat when `numberOfFlats` is known).
+
+**Request (without RAG)**: identical, but with `"useRag": false`
+
+```json
+{
+  "requestType": "HOUSING_CAPACITY",
+  "context": "housingType: apartment\nnumberOfLevels: 4\nnumberOfFlats: 20\nheightMeters: unknown",
+  "useRag": false
+}
+```
+
+**Response (without RAG)**
+
+```json
+{
+  "response": "{\"capacity\": 80, \"confidence\": \"low\", \"reasoning\": \"Assuming a maximum of 4 residents per flat, the building with 20 flats has a capacity of 80. Confidence is low due to the absence of data on typical occupancy rates.\"}"
+}
+```
+
+Without background material the model has no project rule to apply, so it makes up its own assumption
+(4 residents per flat) and reports low confidence.
+
+| | `capacity` | `confidence` | Assumption used |
+|---|---|---|---|
+| RAG on | 40 | high | 2 persons per flat (from the knowledge file) |
+| RAG off | 80 | low | 4 residents per flat (the model's own guess) |
+
+**Notes**
+
+- Retrieval makes the answer follow the project's own rules. It does not make it more accurate by itself:
+  the 2-persons-per-flat rule is a project assumption, not an official statistic, and there is no ground truth
+  for real capacity.
+- This is a single run for each setting. With temperature 0.3 the answers can vary between runs, so repeat the
+  request a few times before drawing conclusions.
+- The model's JSON is returned as a string inside `response`; the Smart City client parses it.
+
