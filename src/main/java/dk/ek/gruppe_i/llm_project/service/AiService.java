@@ -4,21 +4,28 @@ import dk.ek.gruppe_i.llm_project.config.AiDeploymentProperties;
 import dk.ek.gruppe_i.llm_project.dto.AiRequestDTO;
 import dk.ek.gruppe_i.llm_project.enums.AiRequestType;
 import dk.ek.gruppe_i.llm_project.exception.AiServiceException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
+@Slf4j
 @Service
 public class AiService {
 
     private final ChatClient chatClient;
     private final AiDeploymentProperties aiDeploymentProperties;
+    private final HousingKnowledgeBase housingKnowledgeBase;
 
     public AiService(
         ChatClient.Builder chatClientBuilder,
-        AiDeploymentProperties aiDeploymentProperties
+        AiDeploymentProperties aiDeploymentProperties,
+        HousingKnowledgeBase housingKnowledgeBase
     ) {
         this.chatClient = chatClientBuilder.build();
         this.aiDeploymentProperties = aiDeploymentProperties;
+        this.housingKnowledgeBase = housingKnowledgeBase;
     }
 
     public String handleRequest(AiRequestDTO request) {
@@ -92,6 +99,16 @@ public class AiService {
                 - Only describe events that appear in that context. Do not invent scenes or choices.
                 - Return the generated summary as your final response.
                 """;
+            // 4T's: Traits, Task, Tone, Target
+            case HOUSING_CAPACITY -> """
+                Traits: You are a careful urban data analyst. You only use the data in the request and the
+                background material, and you say so when data is missing.
+                Task: Estimate the maximum number of residents (capacity, a whole number of at least 1) of the
+                single housing record in the request. Values written as "unknown" are missing, never zero.
+                Tone: Neutral, precise and brief.
+                Target: A backend service that parses your answer as JSON. Answer with one JSON object and
+                nothing else: {"capacity": <integer>, "confidence": "low|medium|high", "reasoning": "<one or two sentences>"}
+                """;
         };
     }
 
@@ -101,6 +118,25 @@ public class AiService {
                 "Generate a character recap using these character details:\n" + request.getContext();
             case PATH_SUMMARY ->
                 "Generate a journey summary using this journey history:\n" + request.getContext();
+            case HOUSING_CAPACITY -> buildHousingMessage(request);
         };
+    }
+
+    private String buildHousingMessage(AiRequestDTO request) {
+        String message = "Estimate the housing capacity for this record:\n" + request.getContext();
+        boolean useRag = request.getUseRag() != null ? request.getUseRag() : aiDeploymentProperties.isRagEnabled();
+        if (!useRag) {
+            return message;
+        }
+        List<String> background;
+        try {
+            background = housingKnowledgeBase.retrieve(request.getContext());
+        } catch (Exception ex) {
+            // Fail soft: the estimate is still possible without background, only less informed.
+            log.warn("Retrieval failed, answering without background material", ex);
+            return message;
+        }
+        log.info("Retrieved {} background chunks for HOUSING_CAPACITY", background.size());
+        return "Background material:\n" + String.join("\n\n---\n\n", background) + "\n\n" + message;
     }
 }

@@ -12,4 +12,10 @@ import org.springframework.stereotype.Component;
 public class AiDeploymentProperties {
 
     private boolean stripMarkdown = true;
+
+    /** Default for HOUSING_CAPACITY when the request does not set useRag. */
+    private boolean ragEnabled = true;
+
+    /** Number of knowledge chunks added to the prompt. */
+    private int ragTopK = 3;
 }
