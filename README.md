@@ -141,3 +141,50 @@ Without background material the model has no project rule to apply, so it makes 
   request a few times before drawing conclusions.
 - The model's JSON is returned as a string inside `response`; the Smart City client parses it.
 
+## Apartment capacity: `POST /choose-your-fate/ai/housing-capacity`
+
+Estimates the **typical number of residents** (not the legal maximum) of apartment buildings. Built from real OpenStreetMap data (see `housing_eda.ipynb`).
+
+Request (1 to 50 buildings; leave an unknown field out, unknown is never 0):
+
+```json
+{
+  "useRag": true,
+  "buildings": [
+    { "id": "way/4393716", "footprintM2": 630, "numberOfLevels": 5 },
+    { "id": "way/1",       "footprintM2": 300, "heightMeters": 15 },
+    { "id": "way/2",       "numberOfFlats": 30 }
+  ]
+}
+```
+
+Response, one result per building in request order:
+
+```json
+{ "results": [ {
+  "id": "way/4393716", "tier": "B", "situation": "levels known, flats unknown, footprint known",
+  "capacity": 63, "modelCapacity": 63, "confidence": "medium", "reasoning": "630 m2 x 5 x 0.8 = 2520 m2 / 40 = 63",
+  "cappedByCeiling": false, "ceiling": 126, "baselineCapacity": 63,
+  "baselineBasis": "footprint 630 m2 x 5 floors x 0.8 = 2520 m2 usable; 2520 / 40 m2 per person = 63.0",
+  "ragUsed": true, "error": null } ] }
+```
+
+How it works:
+
+1. The server decides the situation (tier A to E) from the known fields and writes the model input itself, so every caller sends the same format.
+2. With RAG, the knowledge base (`rag/apartment-*.md`) is searched with the **words** of the situation (for example `apartment building, levels unknown, flats unknown, footprint known`), not with numbers. The best chunks (rule, reference figures, data profile, examples) go in the prompt.
+3. The answer is read as JSON (`<think>` blocks, code fences and extra text are removed; one retry if it cannot be read).
+4. The backend ceiling is applied: usable area / 20 m2 per person. A higher model answer is limited and marked `cappedByCeiling`.
+5. `baselineCapacity` is the documented rule from the notebook, for comparison. It is a rule, not ground truth.
+
+A building that fails (invalid values, unreadable answer, model down) gets an `error` in its own result; the others are still answered.
+
+Files from the notebook's `rag_export/` go in `src/main/resources/rag/`: `apartment-rules.md`, `apartment-reference.md`, `apartment-profile.md`, `apartment-examples.md` and `baseline-parameters.properties`. Re-run the notebook and copy them again when the data changes.
+
+Compare with and without RAG on the held-out buildings (needs the app and Ollama running):
+
+```
+python tools/compare_rag.py rag_export/eval_set.csv --limit 40
+```
+
+Fill `capacity_label` in `eval_set.csv` by hand for a real comparison; without labels the script only compares with the baseline rule.
