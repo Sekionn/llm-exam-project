@@ -11,8 +11,6 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "app.ai")
 public class AiDeploymentProperties {
 
-    private boolean stripMarkdown = true;
-
     /** Default for HOUSING_CAPACITY when the request does not set useRag. */
     private boolean ragEnabled = true;
 

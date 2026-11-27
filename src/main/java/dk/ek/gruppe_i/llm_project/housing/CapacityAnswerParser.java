@@ -57,12 +57,12 @@ public final class CapacityAnswerParser {
     }
 
     /** Removes {@code <think>...</think>} blocks (qwen3 and similar), also a block that was never closed. */
-    static String stripThinking(String raw) {
+    private static String stripThinking(String raw) {
         return raw.replaceAll("(?s)<think>.*?</think>", "").replaceAll("(?s)<think>.*$", "");
     }
 
     /** The first balanced {...}, ignoring braces inside strings. */
-    static String extractFirstObject(String text) {
+    private static String extractFirstObject(String text) {
         int start = text.indexOf('{');
         if (start < 0) {
             throw new AnswerException("no JSON object in the answer");
