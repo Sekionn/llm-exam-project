@@ -1,7 +1,9 @@
 package dk.ek.gruppe_i.llm_project.service;
 
+import dk.ek.gruppe_i.llm_project.config.AiDeploymentProperties;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.util.StreamUtils;
 
 import java.nio.charset.StandardCharsets;
@@ -9,6 +11,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 
 /** Pure unit tests: chunking and similarity need no Ollama and no Spring context. */
 class HousingKnowledgeBaseTest {
@@ -40,10 +45,32 @@ class HousingKnowledgeBaseTest {
     }
 
     @Test
-    void bundledRagSourceExistsAndHasSections() throws Exception {
-        String text = StreamUtils.copyToString(
-                new ClassPathResource(HousingKnowledgeBase.RESOURCE).getInputStream(), StandardCharsets.UTF_8);
+    void retrievalEmbedsAllMatchingFilesAndCachesTheirChunks() throws Exception {
+        EmbeddingModel model = mock(EmbeddingModel.class);
+        when(model.embed(anyList())).thenAnswer(invocation -> {
+            List<String> texts = invocation.getArgument(0);
+            return texts.stream().map(text -> new float[]{1, 0}).toList();
+        });
+        when(model.embed(anyString())).thenReturn(new float[]{1, 0});
+        AiDeploymentProperties properties = new AiDeploymentProperties();
+        properties.setRagTopK(Integer.MAX_VALUE);
+        HousingKnowledgeBase knowledgeBase = new HousingKnowledgeBase(model, properties);
 
-        assertTrue(HousingKnowledgeBase.split(text).size() > 3);
+        List<String> retrieved = knowledgeBase.retrieveApartmentRules("apartment building, flats known");
+        var sources = new PathMatchingResourcePatternResolver().getResources(HousingKnowledgeBase.APARTMENT_PATTERN);
+        assertTrue(sources.length >= 4, "expected rules, reference, profile and examples files");
+        int expectedChunks = 0;
+        for (var source : sources) {
+            try (var stream = source.getInputStream()) {
+                List<String> fileChunks = HousingKnowledgeBase.split(StreamUtils.copyToString(stream, StandardCharsets.UTF_8));
+                assertTrue(retrieved.containsAll(fileChunks), "missing material from " + source.getFilename());
+                expectedChunks += fileChunks.size();
+            }
+        }
+        assertEquals(expectedChunks, retrieved.size());
+
+        knowledgeBase.retrieveApartmentRules("apartment building, levels known");
+        verify(model, times(1)).embed(anyList());
+        verify(model, times(2)).embed(anyString());
     }
 }

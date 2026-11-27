@@ -39,7 +39,7 @@ public final class HousingSituation {
                 + "footprintM2: " + whole(building.footprintM2()) + "\n"
                 + "numberOfLevels: " + whole(situation.effectiveLevels()) + "\n"
                 + "numberOfFlats: " + whole(building.numberOfFlats()) + "\n"
-                + "heightMeters: " + general(building.heightMeters());
+                + "heightMeters: " + (building.heightMeters() == null ? "unknown" : format(building.heightMeters()));
     }
 
     /** Query for the knowledge base: words, not numbers. */
@@ -47,16 +47,8 @@ public final class HousingSituation {
         return "apartment building, " + situation.phrase();
     }
 
-    static String whole(Number value) {
+    private static String whole(Number value) {
         return value == null ? "unknown" : Long.toString((long) Math.rint(value.doubleValue()));
-    }
-
-    /** Like Python's {@code format(x, "g")} for ordinary values: 15.0 -> 15, 3.64 -> 3.64. */
-    public static String general(Double value) {
-        if (value == null) {
-            return "unknown";
-        }
-        return format(value);
     }
 
     static String format(double value) {

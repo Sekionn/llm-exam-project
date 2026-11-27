@@ -72,7 +72,8 @@ class HousingLogicTest {
         HousingBuilding tall = b(null, null, 12, 15.5);
         assertEquals("buildingType: apartment building\nfootprintM2: unknown\nnumberOfLevels: 5\nnumberOfFlats: 12\nheightMeters: 15.5",
                 HousingSituation.contextText(tall, s(tall)));
-        assertEquals("15", HousingSituation.general(15.0));
+        assertTrue(HousingSituation.contextText(b(null, null, null, 15.0), s(b(null, null, null, 15.0)))
+                .endsWith("heightMeters: 15"));
     }
 
     // ---- validation
@@ -91,7 +92,7 @@ class HousingLogicTest {
         HousingBuilding building = b(null, null, 30, null);
         HousingBaseline.Estimate e = HousingBaseline.estimate(building, s(building), params());
         assertEquals(54, e.capacity());
-        assertEquals("high", e.confidence());
+        assertEquals("30 flats x 1.8 persons per flat", e.basis());
     }
 
     @Test
@@ -99,7 +100,6 @@ class HousingLogicTest {
         HousingBuilding building = b(630.0, 5, null, null);
         HousingBaseline.Estimate e = HousingBaseline.estimate(building, s(building), params());
         assertEquals(63, e.capacity()); // 630 * 5 * 0.8 / 40
-        assertEquals("medium", e.confidence());
         assertTrue(e.basis().contains("2520 m2 usable"), e.basis());
     }
 
@@ -108,7 +108,6 @@ class HousingLogicTest {
         HousingBuilding d = b(300.0, null, null, null);       // 250-500 class -> 5 levels
         HousingBaseline.Estimate ed = HousingBaseline.estimate(d, s(d), params());
         assertEquals(30, ed.capacity());                       // 300*5*0.8/40
-        assertEquals("low", ed.confidence());
         assertTrue(ed.basis().contains("levels missing"));
         HousingBuilding c = b(null, 4, null, null);           // median footprint 300
         assertEquals(24, HousingBaseline.estimate(c, s(c), params()).capacity()); // 300*4*0.8/40
@@ -117,12 +116,13 @@ class HousingLogicTest {
     }
 
     @Test
-    void sizeFlagsLowerConfidence() {
+    void sizeWarningsAreIncludedInTheBaselineExplanation() {
         HousingBuilding small = b(40.0, 2, null, null);
-        assertEquals("small footprint", HousingBaseline.flag(small, params()));
-        assertEquals("low", HousingBaseline.estimate(small, s(small), params()).confidence());
-        assertEquals("large footprint", HousingBaseline.flag(b(3500.0, 3, null, null), params()));
-        assertEquals("", HousingBaseline.flag(b(60.0, 3, null, null), params()));
+        assertTrue(HousingBaseline.estimate(small, s(small), params()).basis().contains("flag: small footprint"));
+        HousingBuilding large = b(3500.0, 3, null, null);
+        assertTrue(HousingBaseline.estimate(large, s(large), params()).basis().contains("flag: large footprint"));
+        HousingBuilding ordinary = b(60.0, 3, null, null);
+        assertFalse(HousingBaseline.estimate(ordinary, s(ordinary), params()).basis().contains("flag:"));
     }
 
     @Test
