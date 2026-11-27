@@ -1,38 +1,30 @@
 # llm_project
 
-This API sends the supplied context to the configured AI provider and returns the
-generated text directly. It has no database, saved summaries, or conversation history.
-Every request must include all the context needed to generate its response.
+This API sends a request type plus context to a local LLM (Ollama) and returns the generated text.
+It has no database or history; every request must include all the context it needs.
 
-Run with Java 21 or later using `./mvnw spring-boot:run` (Windows: `./mvnw.cmd spring-boot:run`).
-Configure the provider with `AI_OLLAMA_BASE_URL`, `AI_OLLAMA_CHAT_MODEL`, and optionally
-`AI_OLLAMA_TEMPERATURE`. The defaults are in `src/main/resources/application.properties`.
+Run with Java 21 using `./mvnw.cmd spring-boot:run`. Configure Ollama with
+`AI_OLLAMA_BASE_URL`, `AI_OLLAMA_CHAT_MODEL`, and optionally `AI_OLLAMA_TEMPERATURE`.
+The defaults are in `src/main/resources/application.properties`.
 
-Send requests to `POST http://localhost:8090/choose-your-fate/ai/ask`
-with `Content-Type: application/json`:
+Send a housing request to `POST http://localhost:8090/ai/ask` with `Content-Type: application/json`:
 
 ```json
 {
-  "requestType": "CHARACTER_RECAP",
-  "context": "Arin is an elven ranger who crossed the forest and rescued a lost traveler."
+  "requestType": "HOUSING_CAPACITY",
+  "context": "housingType: apartment\nnumberOfLevels: 4\nnumberOfFlats: 20\nheightMeters: unknown",
+  "useRag": true
 }
 ```
-
-Use `CHARACTER_RECAP` for a character recap, `PATH_SUMMARY` for a journey summary, or
-`HOUSING_CAPACITY` to estimate housing capacity (see below).
-`context` is required and must contain character details or journey history.
-`characterId` is optional caller metadata; if provided, it must be positive.
-No data is retrieved using the ID. No authentication token or API version header is required.
 
 The response has this shape:
 
 ```json
-{"response": "You are Arin, an elven ranger..."}
+{"response": "{\"capacity\": 40, \"confidence\": \"high\", \"reasoning\": \"...\"}"}
 ```
 
 If the AI provider cannot be reached, times out, or fails to generate a response,
-the API returns HTTP `503 Service Unavailable`
-with `Content-Type: application/problem+json`:
+the API returns HTTP `503 Service Unavailable` with `Content-Type: application/problem+json`:
 
 ```json
 {
@@ -40,20 +32,24 @@ with `Content-Type: application/problem+json`:
   "title": "AI unavailable",
   "status": 503,
   "detail": "AI generation is currently unavailable. Please try again later.",
-  "instance": "/choose-your-fate/ai/ask",
+  "instance": "/ai/ask",
   "code": "AI_UNAVAILABLE"
 }
 ```
 
-An empty AI response is also treated as unavailable. Provider error details are
-not included in the API response.
-
+An empty AI response is also treated as unavailable. Provider error details are not included in the API response.
 Swagger UI is available at `http://localhost:8090/swagger-ui/index.html`.
 
 For Docker, first build the JAR with `./mvnw.cmd package`, then run
 `docker compose -f docker-compose-llm_project.yml --profile prod up --build`.
 The container uses `http://host.docker.internal:11434` for Ollama by default;
 set `AI_OLLAMA_BASE_URL` to use a different provider address.
+
+## Adding a new request type
+
+1. Add a value to `AiRequestType`.
+2. Add a case to `resolveSystemPrompt` with its system prompt, using the 4T's.
+3. Add a case to `buildUserMessage`.
 
 ## Housing capacity (Smart City)
 
@@ -141,3 +137,50 @@ Without background material the model has no project rule to apply, so it makes 
   request a few times before drawing conclusions.
 - The model's JSON is returned as a string inside `response`; the Smart City client parses it.
 
+## Apartment capacity: `POST /ai/housing-capacity`
+
+Estimates the **typical number of residents** (not the legal maximum) of apartment buildings. Built from real OpenStreetMap data (see `housing_eda.ipynb`).
+
+Request (1 to 50 buildings; leave an unknown field out, unknown is never 0):
+
+```json
+{
+  "useRag": true,
+  "buildings": [
+    { "id": "way/4393716", "footprintM2": 630, "numberOfLevels": 5 },
+    { "id": "way/1",       "footprintM2": 300, "heightMeters": 15 },
+    { "id": "way/2",       "numberOfFlats": 30 }
+  ]
+}
+```
+
+Response, one result per building in request order:
+
+```json
+{ "results": [ {
+  "id": "way/4393716", "tier": "B", "situation": "levels known, flats unknown, footprint known",
+  "capacity": 63, "modelCapacity": 63, "confidence": "medium", "reasoning": "630 m2 x 5 x 0.8 = 2520 m2 / 40 = 63",
+  "cappedByCeiling": false, "ceiling": 126, "baselineCapacity": 63,
+  "baselineBasis": "footprint 630 m2 x 5 floors x 0.8 = 2520 m2 usable; 2520 / 40 m2 per person = 63.0",
+  "ragUsed": true, "error": null } ] }
+```
+
+How it works:
+
+1. The server decides the situation (tier A to E) from the known fields and writes the model input itself, so every caller sends the same format.
+2. With RAG, the knowledge base (`rag/apartment-*.md`) is searched with the **words** of the situation (for example `apartment building, levels unknown, flats unknown, footprint known`), not with numbers. The best chunks (rule, reference figures, data profile, examples) go in the prompt.
+3. The answer is read as JSON (`<think>` blocks, code fences and extra text are removed; one retry if it cannot be read).
+4. The backend ceiling is applied: usable area / 20 m2 per person. A higher model answer is limited and marked `cappedByCeiling`.
+5. `baselineCapacity` is the documented rule from the notebook, for comparison. It is a rule, not ground truth.
+
+A building that fails (invalid values, unreadable answer, model down) gets an `error` in its own result; the others are still answered.
+
+Files from the notebook's `rag_export/` go in `src/main/resources/rag/`: `apartment-rules.md`, `apartment-reference.md`, `apartment-profile.md`, `apartment-examples.md` and `baseline-parameters.properties`. Re-run the notebook and copy them again when the data changes.
+
+Compare with and without RAG on the held-out buildings (needs the app and Ollama running):
+
+```
+python tools/compare_rag.py rag_export/eval_set.csv --limit 40
+```
+
+Fill `capacity_label` in `eval_set.csv` by hand for a real comparison; without labels the script only compares with the baseline rule.

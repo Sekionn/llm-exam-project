@@ -4,6 +4,7 @@ import dk.ek.gruppe_i.llm_project.config.AiDeploymentProperties;
 import dk.ek.gruppe_i.llm_project.dto.AiRequestDTO;
 import dk.ek.gruppe_i.llm_project.enums.AiRequestType;
 import dk.ek.gruppe_i.llm_project.exception.AiServiceException;
+import dk.ek.gruppe_i.llm_project.housing.HousingPrompts;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
@@ -31,20 +32,7 @@ public class AiService {
     public String handleRequest(AiRequestDTO request) {
         validateRequest(request);
 
-        String raw;
-        try {
-            raw = chatClient.prompt()
-                .system(resolveSystemPrompt(request.getRequestType()))
-                .user(buildUserMessage(request))
-                .call()
-                .content();
-
-        } catch (Exception ex) {
-            throw new AiServiceException(
-                "AI provider request failed. Check AI deployment configuration and provider availability.",
-                ex
-            );
-        }
+        String raw = complete(request.getRequestType(), buildUserMessage(request));
 
         if (raw == null || raw.isBlank()) {
             throw new AiServiceException("AI provider returned an empty response.");
@@ -55,6 +43,23 @@ public class AiService {
             throw new AiServiceException("AI provider returned an empty response.");
         }
         return response;
+    }
+
+    /**
+     * Calls the chat model with the system prompt chosen for this request type. Returns the raw model text
+     * (may be blank). Throws AiServiceException only when the provider call itself fails.
+     */
+    public String complete(AiRequestType type, String userMessage) {
+        try {
+            return chatClient.prompt()
+                .system(resolveSystemPrompt(type))
+                .user(userMessage)
+                .call()
+                .content();
+        } catch (Exception ex) {
+            throw new AiServiceException(
+                "AI provider request failed. Check AI deployment configuration and provider availability.", ex);
+        }
     }
 
     private String stripMarkdown(String text) {
@@ -78,46 +83,16 @@ public class AiService {
     }
 
     private String resolveSystemPrompt(AiRequestType type) {
+        // To add a request type: add the enum value, then add a case here and in the other switch.
+        // 4T's: Traits, Task, Tone, Target
         return switch (type) {
-            case CHARACTER_RECAP -> """
-                You are a narrator in a fantasy RPG called "Choose Your Fate".
-                Your task is to write a brief, immersive character recap in second person (e.g., "You are...").
-
-                Rules:
-                - Use the character details provided in the request context.
-                - Only state facts from that context. Do not invent stats or lore.
-                - Keep the recap to 3-5 sentences.
-                - Write in an engaging, fantasy-RPG tone.
-                """;
-            case PATH_SUMMARY -> """
-                You are a chronicler in a fantasy RPG called "Choose Your Fate".
-                Your task is to write a narrative summary of the character's journey.
-
-                Rules:
-                - Use the journey history provided in the request context.
-                - Write a compelling, lore-appropriate narrative summary (2-4 sentences, past tense, third person).
-                - Only describe events that appear in that context. Do not invent scenes or choices.
-                - Return the generated summary as your final response.
-                """;
-            // 4T's: Traits, Task, Tone, Target
-            case HOUSING_CAPACITY -> """
-                Traits: You are a careful urban data analyst. You only use the data in the request and the
-                background material, and you say so when data is missing.
-                Task: Estimate the maximum number of residents (capacity, a whole number of at least 1) of the
-                single housing record in the request. Values written as "unknown" are missing, never zero.
-                Tone: Neutral, precise and brief.
-                Target: A backend service that parses your answer as JSON. Answer with one JSON object and
-                nothing else: {"capacity": <integer>, "confidence": "low|medium|high", "reasoning": "<one or two sentences>"}
-                """;
+            case HOUSING_CAPACITY -> HousingPrompts.SYSTEM;
         };
     }
 
     private String buildUserMessage(AiRequestDTO request) {
+        // To add a request type: add the enum value, then add a case here and in the other switch.
         return switch (request.getRequestType()) {
-            case CHARACTER_RECAP ->
-                "Generate a character recap using these character details:\n" + request.getContext();
-            case PATH_SUMMARY ->
-                "Generate a journey summary using this journey history:\n" + request.getContext();
             case HOUSING_CAPACITY -> buildHousingMessage(request);
         };
     }

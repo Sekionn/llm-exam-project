@@ -4,7 +4,6 @@ import dk.ek.gruppe_i.llm_project.enums.AiRequestType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 @Data
@@ -13,18 +12,14 @@ public class AiRequestDTO {
 
     @Schema(
         description = "The type of AI operation to perform",
-        allowableValues = {"CHARACTER_RECAP", "PATH_SUMMARY", "HOUSING_CAPACITY"},
-        example = "CHARACTER_RECAP"
+        allowableValues = {"HOUSING_CAPACITY"},
+        example = "HOUSING_CAPACITY"
     )
     @NotNull(message = "requestType is required")
     private AiRequestType requestType;
 
-    @Schema(description = "Optional character identifier supplied by the caller; no data is looked up", example = "1")
-    @Positive(message = "characterId must be positive")
-    private Integer characterId;
-
-    @Schema(description = "Character details or journey history to use when generating the response",
-            example = "Arin is an elven ranger who crossed the forest and rescued a lost traveler.")
+    @Schema(description = "Housing data to use when generating the response",
+            example = "housingType: apartment\nnumberOfLevels: 4\nnumberOfFlats: 20\nheightMeters: unknown")
     @NotBlank(message = "context is required")
     private String context;
 

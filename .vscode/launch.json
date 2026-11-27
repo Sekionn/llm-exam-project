@@ -6,14 +6,6 @@
     "configurations": [
         {
             "type": "java",
-            "name": "LlmProjectApplication",
-            "request": "launch",
-            "cwd": "${workspaceFolder}",
-            "mainClass": "dk.ek.gruppe_i.llm_project.LlmProjectApplication",
-            "projectName": "recap-manager"
-        },
-        {
-            "type": "java",
             "name": "Current File",
             "request": "launch",
             "cwd": "${workspaceFolder}",
