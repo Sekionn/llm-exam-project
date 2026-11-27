@@ -12,7 +12,7 @@ public class HousingCapacityEstimator {
     /** One call to the language model. Throws if the model cannot be reached. */
     @FunctionalInterface
     public interface Model {
-        String ask(String systemPrompt, String userMessage);
+        String ask(String userMessage);
     }
 
     /** Retrieval: the most relevant knowledge chunks for a query, best first. */
@@ -89,11 +89,11 @@ public class HousingCapacityEstimator {
 
     /** One retry when the answer cannot be read; a model that cannot be reached is not retried. */
     private CapacityAnswerParser.Answer ask(String userMessage) {
-        String raw = model.ask(HousingPrompts.SYSTEM, userMessage);
+        String raw = model.ask(userMessage);
         try {
             return CapacityAnswerParser.parse(raw);
         } catch (CapacityAnswerParser.AnswerException first) {
-            String again = model.ask(HousingPrompts.SYSTEM, userMessage + HousingPrompts.retryReminder());
+            String again = model.ask(userMessage + HousingPrompts.retryReminder());
             return CapacityAnswerParser.parse(again);
         }
     }

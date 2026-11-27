@@ -198,7 +198,7 @@ class HousingLogicTest {
     void estimatorUsesModelAnswerAndReportsBaseline() {
         List<String> queries = new ArrayList<>();
         HousingCapacityEstimator est = new HousingCapacityEstimator(
-                (sys, user) -> "{\"capacity\": 60, \"confidence\": \"medium\", \"reasoning\": \"ok\"}",
+                user -> "{\"capacity\": 60, \"confidence\": \"medium\", \"reasoning\": \"ok\"}",
                 q -> { queries.add(q); return List.of("## Rule B: levels known"); }, params());
         HousingCapacityEstimator.Result r = est.estimate(new HousingBuilding("x", 630.0, 5, null, null), true);
         assertNull(r.error());
@@ -212,7 +212,7 @@ class HousingLogicTest {
     @Test
     void estimatorCapsAtCeilingAndLowersConfidence() {
         HousingCapacityEstimator est = new HousingCapacityEstimator(
-                (sys, user) -> "{\"capacity\": 500, \"confidence\": \"high\", \"reasoning\": \"big\"}", q -> List.of(), params());
+                user -> "{\"capacity\": 500, \"confidence\": \"high\", \"reasoning\": \"big\"}", q -> List.of(), params());
         HousingCapacityEstimator.Result r = est.estimate(new HousingBuilding("x", 630.0, 5, null, null), false);
         assertEquals(126, r.capacity());
         assertEquals(500, r.modelCapacity());
@@ -226,7 +226,7 @@ class HousingLogicTest {
     void estimatorRetriesOnceWhenTheAnswerIsUnreadable() {
         int[] calls = {0};
         List<String> users = new ArrayList<>();
-        HousingCapacityEstimator est = new HousingCapacityEstimator((sys, user) -> {
+        HousingCapacityEstimator est = new HousingCapacityEstimator(user -> {
             users.add(user);
             return calls[0]++ == 0 ? "about sixty" : "{\"capacity\": 60, \"confidence\": \"low\", \"reasoning\": \"r\"}";
         }, q -> List.of(), params());
@@ -238,13 +238,13 @@ class HousingLogicTest {
 
     @Test
     void estimatorReportsErrorsPerBuildingWithoutThrowing() {
-        HousingCapacityEstimator unreadable = new HousingCapacityEstimator((s, u) -> "nope", q -> List.of(), params());
+        HousingCapacityEstimator unreadable = new HousingCapacityEstimator(user -> "nope", q -> List.of(), params());
         HousingCapacityEstimator.Result r1 = unreadable.estimate(new HousingBuilding("x", 630.0, 5, null, null), false);
         assertNull(r1.capacity());
         assertTrue(r1.error().startsWith("model answer could not be read"));
         assertEquals(63, r1.baselineCapacity());
 
-        HousingCapacityEstimator down = new HousingCapacityEstimator((s, u) -> { throw new IllegalStateException("connection refused"); },
+        HousingCapacityEstimator down = new HousingCapacityEstimator(user -> { throw new IllegalStateException("connection refused"); },
                 q -> List.of(), params());
         HousingCapacityEstimator.Result r2 = down.estimate(new HousingBuilding("x", 630.0, 5, null, null), false);
         assertTrue(r2.error().contains("connection refused"));
@@ -258,7 +258,7 @@ class HousingLogicTest {
     void failedRetrievalFallsBackToNoBackground() {
         List<String> users = new ArrayList<>();
         HousingCapacityEstimator est = new HousingCapacityEstimator(
-                (s, u) -> { users.add(u); return "{\"capacity\": 60}"; },
+                user -> { users.add(user); return "{\"capacity\": 60}"; },
                 q -> { throw new IllegalStateException("ollama down"); }, params());
         HousingCapacityEstimator.Result r = est.estimate(new HousingBuilding("x", 630.0, 5, null, null), true);
         assertEquals(60, r.capacity());
@@ -270,7 +270,7 @@ class HousingLogicTest {
     void backgroundIsPlacedBeforeTheTask() {
         List<String> users = new ArrayList<>();
         HousingCapacityEstimator est = new HousingCapacityEstimator(
-                (s, u) -> { users.add(u); return "{\"capacity\": 60}"; }, q -> List.of("## Rule B", "## Rule D"), params());
+                user -> { users.add(user); return "{\"capacity\": 60}"; }, q -> List.of("## Rule B", "## Rule D"), params());
         est.estimate(new HousingBuilding("x", 630.0, 5, null, null), true);
         String user = users.get(0);
         assertTrue(user.startsWith("Background material:\n## Rule B\n\n---\n\n## Rule D"));

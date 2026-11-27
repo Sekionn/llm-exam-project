@@ -4,9 +4,9 @@ import dk.ek.gruppe_i.llm_project.config.AiDeploymentProperties;
 import dk.ek.gruppe_i.llm_project.dto.HousingBuildingDTO;
 import dk.ek.gruppe_i.llm_project.dto.HousingCapacityRequestDTO;
 import dk.ek.gruppe_i.llm_project.dto.HousingCapacityResponseDTO;
+import dk.ek.gruppe_i.llm_project.enums.AiRequestType;
 import dk.ek.gruppe_i.llm_project.housing.BaselineParameters;
 import dk.ek.gruppe_i.llm_project.housing.HousingCapacityEstimator;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,12 +18,11 @@ public class HousingCapacityService {
     private final HousingCapacityEstimator estimator;
     private final AiDeploymentProperties properties;
 
-    public HousingCapacityService(ChatClient.Builder chatClientBuilder, AiDeploymentProperties properties,
+    public HousingCapacityService(AiService aiService, AiDeploymentProperties properties,
                                   HousingKnowledgeBase knowledgeBase, BaselineParameters baselineParameters) {
-        ChatClient chatClient = chatClientBuilder.build();
         this.properties = properties;
         this.estimator = new HousingCapacityEstimator(
-                (system, user) -> chatClient.prompt().system(system).user(user).call().content(),
+                userMessage -> aiService.complete(AiRequestType.HOUSING_CAPACITY, userMessage),
                 knowledgeBase::retrieveApartmentRules,
                 baselineParameters);
     }

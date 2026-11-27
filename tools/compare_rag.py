@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare the LLM with and without RAG on the notebook's eval_set.csv.
 
-Sends the buildings to POST /choose-your-fate/ai/housing-capacity twice (useRag false, then true), writes one row
+Sends the buildings to POST /ai/housing-capacity twice (useRag false, then true), writes one row
 per building to the output CSV and prints the error of each variant against
   - the baseline rule (always available), and
   - capacity_label, if you filled that column by hand (the only real ground truth).
@@ -76,7 +76,7 @@ def show(title, stats):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("eval_csv")
-    ap.add_argument("--url", default="http://localhost:8090/choose-your-fate/ai/housing-capacity")
+    ap.add_argument("--url", default="http://localhost:8090/ai/housing-capacity")
     ap.add_argument("--limit", type=int, default=40, help="number of buildings (a local model is slow)")
     ap.add_argument("--batch", type=int, default=5)
     ap.add_argument("--timeout", type=float, default=600)

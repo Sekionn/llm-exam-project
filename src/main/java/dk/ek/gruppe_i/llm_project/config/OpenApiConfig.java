@@ -14,6 +14,6 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("llm_project API")
                         .version("1.0")
-                        .description("AI-generated character recaps and journey summaries."));
+                        .description("Apartment capacity estimates using a local LLM with RAG."));
     }
 }

@@ -13,7 +13,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/choose-your-fate/ai")
+@RequestMapping("/ai")
 @Tag(name = "AI", description = "Endpoints for AI-generated content using a configured LLM provider")
 public class AiController {
 
@@ -29,7 +29,7 @@ public class AiController {
 
     @Operation(
         summary = "Ask the AI",
-        description = "Generates a response from the supplied context. Possible request types: CHARACTER_RECAP, PATH_SUMMARY"
+        description = "Generates a response from the supplied context. Possible request types: HOUSING_CAPACITY"
     )
     @ApiResponse(responseCode = "503", description = "AI generation is unavailable; try again later")
     public AiResponseDTO ask(@Valid @RequestBody AiRequestDTO request) {
